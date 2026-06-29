@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🎤 ล่าคำสัมผัส - เกมคำคล้องจอง</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mali:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Sriracha&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS (for modern UI utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2canvas for capturing summary screen -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Mali', 'Sriracha', 'sans-serif'],
+                        mali: ['Mali', 'sans-serif'],
+                        sriracha: ['Sriracha', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Mali', 'Sriracha', sans-serif;
+            background: linear-gradient(135deg, #a5b4fc, #c084fc, #818cf8);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Ambient floating elements in background */
+        .bg-element {
+            position: absolute;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.25;
+        }
+
+        /* Bubble Style with glassy and cartoon effect */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95) 0%, rgba(139, 92, 246, 0.4) 60%, rgba(109, 40, 217, 0.8) 100%);
+            box-shadow: inset -5px -5px 12px rgba(109, 40, 217, 0.4), 
+                        0 8px 16px rgba(0, 0, 0, 0.15),
+                        inset 4px 4px 6px rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #1e1b4b;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            user-select: none;
+            touch-action: none;
+            transition: transform 0.1s ease;
+            box-sizing: border-box;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .bubble:active {
+            transform: scale(0.85);
+        }
+
+        /* Special gloss highlight for bubbles */
+        .bubble::after {
+            content: '';
+            position: absolute;
+            top: 12%;
+            left: 15%;
+            width: 30%;
+            height: 15%;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            transform: rotate(-30deg);
+        }
+
+        /* Shake Animation for screens */
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-5px, 2px); }
+            20%, 40%, 60%, 80% { transform: translate(5px, -2px); }
+        }
+        .shake-screen {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* Spark particle style */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 25;
+            transform: scale(0);
+            animation: explode 0.5s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+
+        @keyframes explode {
+            to {
+                transform: translate(var(--dx), var(--dy)) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Hide Scrollbar for full-screen game feel */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="relative h-screen w-screen overflow-hidden">
+
+    <!-- Ambient Decorative Background Elements -->
+    <div class="bg-element top-10 left-10 w-24 h-24 rounded-full bg-white blur-xl"></div>
+    <div class="bg-element bottom-20 right-10 w-36 h-36 rounded-full bg-pink-300 blur-2xl"></div>
+    <div class="bg-element top-1/3 right-1/4 w-32 h-32 rounded-full bg-purple-300 blur-2xl"></div>
+    
+    <!-- Floating Cartoon Clouds (CSS Only decorative, completely independent of gameplay bubble logic) -->
+    <div class="absolute top-20 left-10 opacity-40 pointer-events-none z-0 select-none text-6xl animate-pulse">☁️</div>
+    <div class="absolute top-44 right-20 opacity-30 pointer-events-none z-0 select-none text-7xl" style="animation: pulse 4s infinite">☁️</div>
+    <div class="absolute bottom-40 left-1/4 opacity-20 pointer-events-none z-0 select-none text-5xl">⭐️</div>
+    <div class="absolute top-1/2 right-12 opacity-25 pointer-events-none z-0 select-none text-4xl">🌟</div>
+
+    <!-- ============================================== -->
+    <!-- 1. SCREEN: START SCREEN (หน้าแรก) -->
+    <!-- ============================================== -->
+    <div id="screen-start" class="absolute inset-0 flex flex-col justify-between items-center p-6 z-10">
+        <!-- Header Info -->
+        <div class="text-center mt-6">
+            <h2 id="display-school-start" class="text-xl md:text-2xl text-purple-900 font-semibold bg-white/60 px-4 py-1.5 rounded-full shadow-sm inline-block">
+                โรงเรียนสตรีชัยภูมิ
+            </h2>
+            <p id="display-teacher-start" class="text-md text-purple-800 mt-1 font-medium">
+                คุณครูผู้สอน: ครูกานต์รวี
+            </p>
+        </div>
+
+        <!-- Game Title and Logo -->
+        <div class="text-center my-auto flex flex-col items-center">
+            <div class="relative inline-block mb-3">
+                <span class="text-7xl md:text-8xl block filter drop-shadow">🎤</span>
+                <span class="absolute -bottom-2 -right-2 text-4xl animate-bounce">🫧</span>
+            </div>
+            <h1 id="display-game-title-start" class="text-4xl md:text-6xl font-black text-indigo-950 tracking-wide drop-shadow-lg text-center sriracha-font leading-snug">
+                ล่าคำสัมผัส
+            </h1>
+            <p class="text-lg md:text-xl text-indigo-900 bg-white/80 border-2 border-indigo-200 px-6 py-2 rounded-full font-bold shadow-md mt-4">
+                🎯 ฝึกทักษะ "คำคล้องจอง" ป.1 - ป.3
+            </p>
+        </div>
+
+        <!-- Input & Controls Container -->
+        <div class="w-full max-w-md bg-white/90 border-4 border-indigo-400 p-6 rounded-3xl shadow-2xl mb-8 flex flex-col gap-4">
+            <div>
+                <label for="student-name" class="block text-indigo-950 text-lg font-bold mb-2">🎈 ชื่อผู้เล่น / นักเรียน:</label>
+                <input type="text" id="student-name" placeholder="กรอกชื่อของคุณที่นี่..." 
+                       class="w-full text-center text-lg font-bold py-3 px-4 rounded-2xl border-4 border-indigo-200 focus:border-indigo-500 focus:outline-none transition-colors text-indigo-900 placeholder:text-gray-400">
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+                <!-- Start Button -->
+                <button id="btn-start-game" class="w-full py-4 bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-500 hover:to-green-600 active:scale-95 text-white text-2xl font-black rounded-2xl shadow-lg hover:shadow-xl border-b-8 border-green-700 transition duration-150">
+                    🚀 เริ่มเล่นเกมเลย!
+                </button>
+                
+                <!-- Bottom Action Buttons -->
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <button id="btn-goto-leaderboard" class="py-2.5 bg-indigo-100 hover:bg-indigo-200 active:scale-95 text-indigo-950 text-md font-bold rounded-xl border-b-4 border-indigo-300 transition duration-150 flex items-center justify-center gap-1">
+                        🏆 อันดับคะแนน
+                    </button>
+                    <button id="btn-goto-settings" class="py-2.5 bg-purple-100 hover:bg-purple-200 active:scale-95 text-purple-950 text-md font-bold rounded-xl border-b-4 border-purple-300 transition duration-150 flex items-center justify-center gap-1">
+                        ⚙️ ครูตั้งค่าคำ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 2. SCREEN: PLAY GAMEPLAY (หน้าเล่นเกม) -->
+    <!-- ============================================== -->
+    <div id="screen-game" class="absolute inset-0 hidden select-none">
+        
+        <!-- #bubbleArea: The most critical container for floating bubbles -->
+        <!-- z-index: 20, position fixed, full screen, touch-action:none. NO overflow:hidden to prevent clip -->
+        <div id="bubbleArea" class="fixed inset-0 z-20 touch-none pointer-events-auto"></div>
+
+        <!-- Top HUD Panel (Heads Up Display) -->
+        <!-- z-index: 50 to render on top of bubbles. pointer-events:none allows clicking behind on bubbles -->
+        <div class="absolute top-0 left-0 right-0 p-4 flex flex-col gap-3 z-50 pointer-events-none">
+            
+            <!-- Realtime Metrics Header -->
+            <div class="flex justify-between items-center w-full max-w-4xl mx-auto pointer-events-auto">
+                <!-- Score & Combo Container -->
+                <div class="flex gap-2">
+                    <div class="bg-indigo-900/90 text-white px-4 py-2 rounded-2xl border-2 border-indigo-400 flex flex-col items-center shadow-lg min-w-[100px]">
+                        <span class="text-xs text-indigo-200 font-semibold">คะแนน ⭐</span>
+                        <span id="game-score" class="text-2xl font-bold text-yellow-300">0</span>
+                    </div>
+                    <div id="combo-badge" class="bg-pink-600/95 text-white px-4 py-2 rounded-2xl border-2 border-pink-400 flex flex-col items-center shadow-lg transition-transform duration-100 scale-0 min-w-[80px]">
+                        <span class="text-xs text-pink-200 font-semibold">คอมโบ 🔥</span>
+                        <span id="game-combo" class="text-2xl font-black text-yellow-200">0</span>
+                    </div>
+                </div>
+
+                <!-- Timer Bar and Indicator -->
+                <div class="bg-indigo-900/95 text-white px-5 py-2 rounded-2xl border-2 border-indigo-400 flex flex-col items-center shadow-lg min-w-[100px]">
+                    <span class="text-xs text-red-200 font-semibold">เวลาที่เหลือ ⏰</span>
+                    <span id="game-timer" class="text-2xl font-bold text-red-300">60s</span>
+                </div>
+            </div>
+
+            <!-- WORD PROMPT AREA (คำโจทย์ตรงกลาง) -->
+            <!-- Huge, central, high-contrast block for child clarity -->
+            <div class="w-full max-w-md mx-auto text-center pointer-events-auto mt-2">
+                <div class="bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 border-4 border-indigo-950 px-6 py-4 rounded-3xl shadow-xl flex flex-col items-center relative overflow-hidden">
+                    <!-- Deco sparkles -->
+                    <span class="absolute top-1 left-2 text-xl select-none opacity-80">✨</span>
+                    <span class="absolute bottom-1 right-2 text-xl select-none opacity-80">🌟</span>
+                    
+                    <span class="text-indigo-950 font-black text-sm tracking-wider uppercase bg-white/70 px-3 py-0.5 rounded-full mb-1">
+                        หาคำที่คล้องจองกับคำว่า...
+                    </span>
+                    <h2 id="current-word-prompt" class="text-4xl md:text-5xl font-black text-indigo-950 tracking-wider sriracha-font drop-shadow-sm">
+                        นา
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3-2-1 Countdown Overlay BEFORE Game Begins -->
+        <!-- z-index: 60, covers screen, pointer-events: none when hidden -->
+        <div id="countdown-overlay" class="absolute inset-0 bg-indigo-950/80 flex flex-col items-center justify-center z-50 transition-opacity duration-300">
+            <h3 class="text-white text-3xl font-bold mb-4">เตรียมตัวให้พร้อม...</h3>
+            <div id="countdown-number" class="text-9xl font-black text-yellow-300 scale-100 transition-all duration-300 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
+                3
+            </div>
+            <p class="text-white/80 text-xl mt-6">แตะฟองสบู่ที่มีเสียงสระและตัวสะกดเหมือนกันนะ!</p>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 3. SCREEN: RESULT SCREEN (หน้าสรุปผลการแข่งขัน) -->
+    <!-- ============================================== -->
+    <div id="screen-result" class="absolute inset-0 hidden overflow-y-auto p-4 md:p-8 z-40">
+        <div class="max-w-xl mx-auto bg-white border-8 border-indigo-900 rounded-[32px] shadow-2xl p-6 my-4 flex flex-col gap-6 relative" id="summary-card">
+            
+            <!-- School / Instructor Info Top -->
+            <div class="text-center border-b-2 border-indigo-100 pb-3">
+                <h4 id="display-school-result" class="text-indigo-900 text-lg font-bold">โรงเรียนสตรีชัยภูมิ</h4>
+                <p id="display-teacher-result" class="text-indigo-700 text-sm">ผู้สอน: ครูกานต์รวี</p>
+                <p id="result-date" class="text-gray-500 text-xs mt-1">วันที่เล่น: -</p>
+            </div>
+
+            <!-- Grade & Star Badge -->
+            <div class="text-center flex flex-col items-center">
+                <h3 class="text-indigo-950 text-2xl font-black mb-1">🎉 เก่งมากเลยเพื่อน ๆ !</h3>
+                <p id="result-student-name" class="text-xl font-bold text-purple-700 bg-purple-50 px-4 py-1.5 rounded-full inline-block border border-purple-200">
+                    ผู้เล่น: น้องภูผา
+                </p>
+                
+                <!-- Graphic Stars -->
+                <div id="result-stars" class="flex gap-2 justify-center text-5xl md:text-6xl my-4 text-amber-400 drop-shadow">
+                    ⭐⭐⭐
+                </div>
+
+                <!-- Display Grade Letter Grade (A, B, C, D) -->
+                <div class="inline-block bg-indigo-900 text-white border-4 border-yellow-300 font-black text-5xl px-8 py-3 rounded-2xl shadow-md rotate-[-2deg] my-2">
+                    <span class="text-xs block text-yellow-200 font-medium">เกรดที่ได้</span>
+                    <span id="result-grade">A+</span>
+                </div>
+            </div>
+
+            <!-- Score Grid -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-indigo-50 border-2 border-indigo-100 p-4 rounded-2xl text-center">
+                    <span class="text-xs font-semibold text-indigo-700 block mb-1">คะแนนรวมทั้งหมด ⭐</span>
+                    <strong id="result-total-score" class="text-3xl font-black text-indigo-950">1,250</strong>
+                </div>
+                <div class="bg-pink-50 border-2 border-pink-100 p-4 rounded-2xl text-center">
+                    <span class="text-xs font-semibold text-pink-700 block mb-1">คอมโบสูงสุด 🔥</span>
+                    <strong id="result-max-combo" class="text-3xl font-black text-pink-950">8</strong>
+                </div>
+                <div class="bg-emerald-50 border-2 border-emerald-100 p-3 rounded-2xl text-center">
+                    <span class="text-xs font-semibold text-emerald-700 block mb-1">แตะถูกฟอง ✅</span>
+                    <strong id="result-correct-count" class="text-xl font-black text-emerald-950">25 ครั้ง</strong>
+                </div>
+                <div class="bg-red-50 border-2 border-red-100 p-3 rounded-2xl text-center">
+                    <span class="text-xs font-semibold text-red-700 block mb-1">แตะโดนคำลวง ❌</span>
+                    <strong id="result-incorrect-count" class="text-xl font-black text-red-950">3 ครั้ง</strong>
+                </div>
+            </div>
+
+            <!-- Share / Actions panel -->
+            <div class="flex flex-col gap-2 pt-2 border-t border-indigo-100">
+                <button id="btn-save-image" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow border-b-4 border-indigo-800 transition duration-150 flex items-center justify-center gap-2">
+                    📸 บันทึกผลสอบเป็นรูปภาพ (PNG)
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-result-restart" class="py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow border-b-4 border-emerald-700 transition duration-150">
+                        🔄 เล่นอีกครั้ง
+                    </button>
+                    <button id="btn-result-home" class="py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow border-b-4 border-amber-700 transition duration-150">
+                        🏠 กลับหน้าแรก
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 4. SCREEN: LEADERBOARD SCREEN (ตารางอันดับคะแนน) -->
+    <!-- ============================================== -->
+    <div id="screen-leaderboard" class="absolute inset-0 hidden overflow-y-auto p-4 md:p-8 z-45">
+        <div class="max-w-md mx-auto bg-white border-8 border-indigo-900 rounded-[32px] shadow-2xl p-6 my-4">
+            
+            <div class="text-center mb-6">
+                <span class="text-5xl block mb-2">🏆</span>
+                <h2 class="text-3xl font-black text-indigo-950">ตารางเกียรติยศ</h2>
+                <p class="text-indigo-600 text-sm">10 อันดับนักล่าคำสัมผัสระดับสุดยอด</p>
+            </div>
+
+            <!-- Score List Container -->
+            <div id="leaderboard-list" class="flex flex-col gap-2.5 max-h-[350px] overflow-y-auto pr-1 mb-6">
+                <!-- Dynamically loaded scoreboard here -->
+            </div>
+
+            <!-- Navigation Actions -->
+            <div class="grid grid-cols-2 gap-2 border-t border-indigo-100 pt-4">
+                <button id="btn-clear-scores" class="py-2.5 bg-red-100 hover:bg-red-200 text-red-800 font-bold text-sm rounded-xl border border-red-300">
+                    🧹 ล้างประวัติทั้งหมด
+                </button>
+                <button id="btn-leaderboard-back" class="py-2.5 bg-indigo-900 hover:bg-indigo-950 text-white font-bold text-sm rounded-xl">
+                    ⬅️ ย้อนกลับ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 5. SCREEN: SETTINGS SCREEN FOR TEACHERS (หน้าต่างผู้ควบคุม/คุณครู) -->
+    <!-- ============================================== -->
+    <div id="screen-settings" class="absolute inset-0 hidden overflow-y-auto p-4 md:p-8 z-45">
+        <div class="max-w-2xl mx-auto bg-white border-8 border-purple-900 rounded-[32px] shadow-2xl p-6 my-4">
+            
+            <div class="text-center border-b-2 border-purple-100 pb-4 mb-6">
+                <span class="text-5xl block mb-2">⚙️</span>
+                <h2 class="text-3xl font-black text-purple-950">แดชบอร์ดตั้งค่าสำหรับคุณครู</h2>
+                <p class="text-purple-600 text-sm">ปรับปรุงและกำหนดข้อมูลเกมให้เหมาะสมกับบทเรียน</p>
+            </div>
+
+            <!-- Teacher Info and Settings Section -->
+            <div class="flex flex-col gap-4 bg-purple-50 p-4 rounded-2xl mb-6 border border-purple-100">
+                <h3 class="font-bold text-lg text-purple-950">📋 ข้อมูลทั่วไปของเกม</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-purple-950 mb-1">ชื่อเกม:</label>
+                        <input type="text" id="config-game-title" class="w-full text-sm font-bold p-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-purple-950 mb-1">ชื่อโรงเรียน:</label>
+                        <input type="text" id="config-school" class="w-full text-sm font-bold p-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-purple-950 mb-1">ชื่อคุณครูผู้สอน:</label>
+                        <input type="text" id="config-teacher" class="w-full text-sm font-bold p-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-1">
+                    <div>
+                        <label class="block text-xs font-bold text-purple-950 mb-1">เวลาเล่น (วินาที):</label>
+                        <input type="number" id="config-game-time" min="10" max="300" class="w-full text-sm font-bold p-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-purple-950 mb-1">ฟองสูงสุดบนจอ:</label>
+                        <input type="number" id="config-max-bubbles" min="3" max="15" class="w-full text-sm font-bold p-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-purple-950 mb-1">ระดับความยาก:</label>
+                        <select id="config-difficulty" class="w-full text-sm font-bold p-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none bg-white">
+                            <option value="easy">ง่าย (ฟองลอยช้า / คำลวงน้อย)</option>
+                            <option value="normal">ปานกลาง (ปกติ)</option>
+                            <option value="hard">ยาก (ฟองลอยเร็ว / คำลวงเยอะ)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-purple-950 mb-1">เสียงประกอบเอฟเฟกต์:</label>
+                        <select id="config-sound" class="w-full text-sm font-bold p-2 border-2 border-purple-200 rounded-lg focus:border-purple-500 outline-none bg-white">
+                            <option value="true">🔊 เปิดเสียง</option>
+                            <option value="false">🔇 ปิดเสียง</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Word Database Section -->
+            <div class="flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-lg text-purple-950">📚 จัดการคู่คำสัมผัส</h3>
+                    <button id="btn-add-word-pair" class="py-1 px-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow">
+                        ➕ เพิ่มคู่คำใหม่
+                    </button>
+                </div>
+                
+                <p class="text-xs text-gray-500">กรอกคำโจทย์ และใส่ตัวเลือกคล้องจองและคำลวง คั่นคำด้วยสัญลักษณ์จุลภาค (,)</p>
+                
+                <!-- Word list dynamic table -->
+                <div class="max-h-[300px] overflow-y-auto border border-purple-100 rounded-xl">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-purple-100 text-purple-950 font-bold border-b border-purple-200">
+                                <th class="p-2.5">คำโจทย์</th>
+                                <th class="p-2.5">คำสัมผัส (ถูก) *ใช้คั่นด้วยคอมมา ,</th>
+                                <th class="p-2.5">คำลวง (ผิด) *ใช้คั่นด้วยคอมมา ,</th>
+                                <th class="p-2.5 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="word-pairs-table-body">
+                            <!-- Populated in Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="grid grid-cols-3 gap-2 border-t border-purple-100 pt-5 mt-6">
+                <button id="btn-settings-reset" class="py-2.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-sm rounded-xl">
+                    🔄 รีเซ็ตค่าเริ่มต้น
+                </button>
+                <button id="btn-settings-cancel" class="py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-xl">
+                    🚫 ยกเลิก
+                </button>
+                <button id="btn-settings-save" class="py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm rounded-xl">
+                    💾 บันทึกการตั้งค่า
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Web Audio API Synthesizer Integration -->
+    <script>
+        // ==============================================
+        // AUDIO SYNTHESIZER: SOUND EFFECTS (Web Audio API)
+        // ==============================================
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (CONFIG.soundEnabled === false) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            
+            if (type === 'correct') {
+                // Happy pop chime sound
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(329.63, now); // E4
+                osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.15); // E5
+
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(392.00, now); // G4
+                osc2.frequency.exponentialRampToValueAtTime(987.77, now + 0.15); // B5
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.3);
+                osc2.stop(now + 0.3);
+
+            } else if (type === 'incorrect') {
+                // Sad slide buzzer sound
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now); // A3
+                osc.frequency.linearRampToValueAtTime(110, now + 0.25); // A2
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.28);
+
+                // Simple filter to soften the sawtooth buzzer
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, now);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.3);
+
+            } else if (type === 'pop') {
+                // Bubble pop noise
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
+
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.12);
+
+            } else if (type === 'gameover') {
+                // Celebratory final fan-fare chord
+                const notes = [261.63, 329.63, 392.00, 523.25]; // C chord
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + (idx * 0.05));
+                    
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.12, now + (idx * 0.05) + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.start(now);
+                    osc.stop(now + 1.5);
+                });
+            } else if (type === 'tick') {
+                // Mechanical countdown tick
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1000, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.06);
+            }
+        }
+    </script>
+
+    <!-- Main Game Scripts logic -->
+    <script>
+        // ==============================================
+        // DEFAULT DATA & CONFIGURATION STATE
+        // ==============================================
+        const KEY_SCORES = "lyric_game_scores_v2";
+        const KEY_WORD_PAIRS = "lyric_game_words_v2";
+        const KEY_GLOBAL_CONFIG = "lyric_game_configs_v2";
+
+        const DEFAULT_WORD_PAIRS = [
+            { prompt: "นา", correct: ["ตา", "ปลา", "มา", "ฟ้า", "หา", "ยา", "ทา"], incorrect: ["ดี", "ไป", "กิน", "เรียน", "ใจ", "ลม", "ดิน"] },
+            { prompt: "ใจ", correct: ["ไป", "ไม้", "ใหม่", "ไหน", "ใส", "ไกล", "ให้"], incorrect: ["มา", "ดิน", "เดิน", "ขาว", "ยาว", "คือ", "รัก"] },
+            { prompt: "ดาว", correct: ["ขาว", "หนาว", "ยาว", "กาว", "คาว", "สาว", "หาว"], incorrect: ["ใจ", "บิน", "เนิน", "ลือ", "ปลา", "ถิ่น", "ลม"] },
+            { prompt: "มือ", correct: ["คือ", "ลือ", "ถือ", "ซื่อ", "ปรือ", "อือ"], incorrect: ["ตา", "กิน", "ฟ้า", "ไป", "ไม้", "หิน", "เดิน"] },
+            { prompt: "เดิน", correct: ["เนิน", "เทิน", "เชิน", "เพลิน", "เกิน", "เผชิญ"], incorrect: ["ใจ", "ขาว", "มา", "ดี", "กิน", "ดิน", "ยาว"] },
+            { prompt: "ดิน", correct: ["หิน", "ถิ่น", "กิน", "บิน", "ปีน", "ศิล", "กลิ่น"], incorrect: ["ไป", "นา", "ไม้", "ยาว", "คือ", "ลือ", "ดาว"] }
+        ];
+
+        // Safe clone helper (No structuredClone used for compatibility)
+        function safeClone(obj) {
+            return JSON.parse(JSON.stringify(obj));
+        }
+
+        // Active State of Global Variables
+        let WORD_PAIRS = [];
+        let CONFIG = {
+            gameTitle: "ล่าคำสัมผัส 🎤",
+            schoolName: "โรงเรียนสตรีชัยภูมิ",
+            teacherName: "ครูกานต์รวี",
+            gameDuration: 60, // seconds
+            maxBubblesOnScreen: 7,
+            difficulty: "normal", // easy, normal, hard
+            soundEnabled: true
+        };
+
+        // Game state variables
+        let gameRunning = false;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let timeLeft = 0;
+        let timerInterval = null;
+        let spawnInterval = null;
+        let bubbleIdCounter = 0;
+        
+        // Active gameplay prompt pair
+        let currentPairIndex = 0;
+        
+        // List of currently floating bubbles
+        let bubbles = [];
+
+        // Animation Frame reference
+        let animFrameId = null;
+
+        // ==============================================
+        // STORAGE HANDLERS (Local Storage fallback-safe)
+        // ==============================================
+        function loadSavedData() {
+            try {
+                const savedWords = localStorage.getItem(KEY_WORD_PAIRS);
+                if (savedWords) {
+                    WORD_PAIRS = JSON.parse(savedWords);
+                } else {
+                    WORD_PAIRS = safeClone(DEFAULT_WORD_PAIRS);
+                    localStorage.setItem(KEY_WORD_PAIRS, JSON.stringify(WORD_PAIRS));
+                }
+
+                const savedConfigs = localStorage.getItem(KEY_GLOBAL_CONFIG);
+                if (savedConfigs) {
+                    CONFIG = JSON.parse(savedConfigs);
+                } else {
+                    localStorage.setItem(KEY_GLOBAL_CONFIG, JSON.stringify(CONFIG));
+                }
+            } catch (e) {
+                console.error("Storage load error, falling back to defaults", e);
+                WORD_PAIRS = safeClone(DEFAULT_WORD_PAIRS);
+            }
+            updateDOMWithConfig();
+        }
+
+        function saveConfigToStorage() {
+            try {
+                localStorage.setItem(KEY_GLOBAL_CONFIG, JSON.stringify(CONFIG));
+                localStorage.setItem(KEY_WORD_PAIRS, JSON.stringify(WORD_PAIRS));
+            } catch (e) {
+                console.error("Failed to save config", e);
+            }
+            updateDOMWithConfig();
+        }
+
+        function updateDOMWithConfig() {
+            // Update Start screen labels
+            document.getElementById('display-game-title-start').textContent = CONFIG.gameTitle;
+            document.getElementById('display-school-start').textContent = CONFIG.schoolName;
+            document.getElementById('display-teacher-start').textContent = "คุณครูผู้สอน: " + CONFIG.teacherName;
+
+            // Update result screen labels
+            document.getElementById('display-school-result').textContent = CONFIG.schoolName;
+            document.getElementById('display-teacher-result').textContent = "คุณครูผู้สอน: " + CONFIG.teacherName;
+        }
+
+        // ==============================================
+        // SCREEN SWAP (Single-page control)
+        // ==============================================
+        function showScreen(screenId) {
+            // Screen elements
+            const screens = ['screen-start', 'screen-game', 'screen-result', 'screen-leaderboard', 'screen-settings'];
+            screens.forEach(id => {
+                const el = document.getElementById(id);
+                if (id === screenId) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+
+            // Cleanup game if exiting gameplay screen
+            if (screenId !== 'screen-game') {
+                stopGameLoop();
+            }
+        }
+
+        // ==============================================
+        // INTERACTIVE: GAMEPLAY CORE LOGIC
+        // ==============================================
+        function triggerScreenShake() {
+            const body = document.body;
+            body.classList.add('shake-screen');
+            setTimeout(() => {
+                body.classList.remove('shake-screen');
+            }, 400);
+        }
+
+        function createSparkles(x, y, color) {
+            const container = document.body;
+            const particleCount = 12;
+            for (let i = 0; i < particleCount; i++) {
+                const el = document.createElement('div');
+                el.className = 'particle';
+                
+                // Random vector
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 40 + Math.random() * 60;
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance;
+                
+                // Color and size
+                const size = 10 + Math.random() * 14;
+                el.style.width = size + 'px';
+                el.style.height = size + 'px';
+                el.style.backgroundColor = color;
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+                
+                el.style.setProperty('--dx', dx + 'px');
+                el.style.setProperty('--dy', dy + 'px');
+                
+                container.appendChild(el);
+                
+                // Clean up animation elements
+                setTimeout(() => el.remove(), 600);
+            }
+        }
+
+        function changeCurrentPrompt() {
+            if (WORD_PAIRS.length === 0) return;
+            // Randomly select another pair index ensuring variation
+            let nextIndex = Math.floor(Math.random() * WORD_PAIRS.length);
+            if (WORD_PAIRS.length > 1 && nextIndex === currentPairIndex) {
+                nextIndex = (currentPairIndex + 1) % WORD_PAIRS.length;
+            }
+            currentPairIndex = nextIndex;
+            
+            const activePair = WORD_PAIRS[currentPairIndex];
+            document.getElementById('current-word-prompt').textContent = activePair.prompt;
+            
+            // Re-sync all current bubbles to prevent player confusion or lag in matching
+            // If the user wants to instantly cycle prompts
+            bubbles.forEach(b => {
+                const isCorrect = Math.random() > getLureRatio();
+                b.isCorrect = isCorrect;
+                b.word = getRandomWordFromActivePair(isCorrect);
+                b.el.textContent = b.word;
+                b.el.className = 'bubble font-mali';
+                
+                // Visual variation of font sizing based on word length
+                b.el.style.fontSize = b.word.length > 4 ? '1rem' : '1.35rem';
+            });
+        }
+
+        function getRandomWordFromActivePair(isCorrect) {
+            const pair = WORD_PAIRS[currentPairIndex];
+            if (isCorrect) {
+                if (!pair.correct || pair.correct.length === 0) return "ตา";
+                return pair.correct[Math.floor(Math.random() * pair.correct.length)];
+            } else {
+                if (!pair.incorrect || pair.incorrect.length === 0) return "ดี";
+                return pair.incorrect[Math.floor(Math.random() * pair.incorrect.length)];
+            }
+        }
+
+        function getSpeedRange() {
+            // speed values: pixel movement per requestAnimationFrame loop (approx 60fps)
+            switch (CONFIG.difficulty) {
+                case 'easy':
+                    return { min: 1.2, max: 2.2 };
+                case 'hard':
+                    return { min: 3.2, max: 5.2 };
+                case 'normal':
+                default:
+                    return { min: 1.8, max: 3.5 };
+            }
+        }
+
+        function getLureRatio() {
+            // Ratio of incorrect word bubbles generated
+            switch (CONFIG.difficulty) {
+                case 'easy': return 0.3; // 30% lure words
+                case 'hard': return 0.6; // 60% lure words
+                case 'normal':
+                default: return 0.45; // 45% lure words
+            }
+        }
+
+        // JS move loop using requestAnimationFrame as requested
+        function moveBubbles() {
+            if (!gameRunning) return;
+
+            const heightBoundary = window.innerHeight;
+
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const b = bubbles[i];
+                b.y -= b.speed;
+                b.el.style.top = b.y + 'px';
+
+                // Rule 7: Remove bubble when completely past the upper edge (top < -size)
+                if (b.y < -b.size) {
+                    // Remove elements safely
+                    b.el.remove();
+                    bubbles.splice(i, 1);
+                    
+                    // Rule 10: Instantly spawn a replacement to maintain optimal density
+                    spawnSingleBubble();
+                }
+            }
+
+            animFrameId = requestAnimationFrame(moveBubbles);
+        }
+
+        // SPAWNING SYSTEM
+        function spawnSingleBubble() {
+            if (!gameRunning) return;
+            if (WORD_PAIRS.length === 0) return;
+
+            const area = document.getElementById('bubbleArea');
+            if (!area) return;
+
+            const size = Math.floor(Math.random() * 20) + 85; // 85px to 105px bubble diameter
+            const id = "b_" + (++bubbleIdCounter);
+            
+            // Rule 6: Spawn lower than bottom screen edge (top = innerHeight + size)
+            const topY = window.innerHeight + size;
+            
+            // Random horizontal placement keeping bubble entirely inside the viewport
+            const maxLeft = window.innerWidth - size;
+            const leftX = Math.max(0, Math.min(maxLeft, Math.floor(Math.random() * window.innerWidth)));
+
+            // Select matching/mismatching attributes
+            const isCorrect = Math.random() > getLureRatio();
+            const wordText = getRandomWordFromActivePair(isCorrect);
+
+            // Configure speed based on difficulty settings
+            const speedLimit = getSpeedRange();
+            const actualSpeed = speedLimit.min + Math.random() * (speedLimit.max - speedLimit.min);
+
+            // Build HTML elements
+            const bubbleEl = document.createElement('div');
+            bubbleEl.id = id;
+            bubbleEl.className = 'bubble font-mali';
+            bubbleEl.textContent = wordText;
+            bubbleEl.style.width = size + 'px';
+            bubbleEl.style.height = size + 'px';
+            bubbleEl.style.left = leftX + 'px';
+            bubbleEl.style.top = topY + 'px';
+            
+            // Sizing optimization for Thai glyphs
+            bubbleEl.style.fontSize = wordText.length > 4 ? '1.1rem' : '1.4rem';
+            
+            // Append to screen container
+            area.appendChild(bubbleEl);
+
+            const bubbleObj = {
+                id: id,
+                el: bubbleEl,
+                x: leftX,
+                y: topY,
+                size: size,
+                speed: actualSpeed,
+                isCorrect: isCorrect,
+                word: wordText
+            };
+
+            // Touch interaction: Pointerdown event listener as defined in tech constraints
+            bubbleEl.addEventListener('pointerdown', function(e) {
+                e.preventDefault();
+                handleBubbleTap(bubbleObj);
+            }, { passive: false });
+
+            bubbles.push(bubbleObj);
+        }
+
+        // GAMEPLAY ACTIONS
+        function handleBubbleTap(bubbleObj) {
+            if (!gameRunning) return;
+
+            // Trigger Pop audio element
+            playSound('pop');
+
+            // Find clicked coordinate for sparkle coordinates
+            const rect = bubbleObj.el.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            if (bubbleObj.isCorrect) {
+                // Correct Answer selected
+                playSound('correct');
+                createSparkles(centerX, centerY, '#10B981'); // Emerald green particles
+
+                correctCount++;
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+
+                // Calculate scoring logic with combo multiplier bonuses
+                const baseReward = 10;
+                const multiplier = Math.floor(combo / 5) + 1; // Double points every 5 streak multiplier
+                score += baseReward * multiplier;
+
+                // UI Display Update
+                updateScoreAndComboUI();
+
+                // Rotate Game Prompt Word so kids don't repeatedly tap same item
+                changeCurrentPrompt();
+
+            } else {
+                // Incorrect Answer / Lure item tapped
+                playSound('incorrect');
+                triggerScreenShake();
+                createSparkles(centerX, centerY, '#EF4444'); // Crimson Red particles
+
+                incorrectCount++;
+                combo = 0; // Combo breaks!
+
+                // Subtract minor penalty
+                score = Math.max(0, score - 5);
+                updateScoreAndComboUI();
+            }
+
+            // Pop animation and cleanup
+            bubbleObj.el.style.transform = 'scale(1.2)';
+            bubbleObj.el.style.opacity = '0';
+            
+            setTimeout(() => {
+                bubbleObj.el.remove();
+                // Extract popped item from dynamic tracking array
+                bubbles = bubbles.filter(item => item.id !== bubbleObj.id);
+                // Immediately spawn another balloon to maintain user activity
+                spawnSingleBubble();
+            }, 100);
+        }
+
+        function updateScoreAndComboUI() {
+            document.getElementById('game-score').textContent = score;
+            document.getElementById('game-combo').textContent = combo;
+            
+            const badge = document.getElementById('combo-badge');
+            if (combo >= 2) {
+                badge.classList.remove('scale-0');
+                badge.classList.add('scale-100');
+                // Tiny bouncy punch visual feedback
+                badge.style.transform = 'scale(1.15)';
+                setTimeout(() => {
+                    badge.style.transform = 'scale(1)';
+                }, 100);
+            } else {
+                badge.classList.remove('scale-100');
+                badge.classList.add('scale-0');
+            }
+        }
+
+        function clearAllBubbles() {
+            const area = document.getElementById('bubbleArea');
+            if (area) {
+                area.innerHTML = '';
+            }
+            bubbles = [];
+        }
+
+        // ==============================================
+        // CORE: START / STOP GAME LOOPS
+        // ==============================================
+        function startPreCountdown() {
+            showScreen('screen-game');
+            const countdownOverlay = document.getElementById('countdown-overlay');
+            const countdownNum = document.getElementById('countdown-number');
+            countdownOverlay.classList.remove('hidden', 'opacity-0');
+            countdownOverlay.classList.add('opacity-100');
+
+            let currentCount = 3;
+            countdownNum.textContent = currentCount;
+            playSound('tick');
+
+            const startInterval = setInterval(() => {
+                currentCount--;
+                if (currentCount > 0) {
+                    countdownNum.textContent = currentCount;
+                    playSound('tick');
+                } else if (currentCount === 0) {
+                    countdownNum.textContent = "เริ่ม!";
+                    playSound('pop');
+                } else {
+                    clearInterval(startInterval);
+                    countdownOverlay.classList.add('opacity-0');
+                    setTimeout(() => {
+                        countdownOverlay.classList.add('hidden');
+                        startGameplayEngine();
+                    }, 300);
+                }
+            }, 1000);
+        }
+
+        function gameplayTimerTick() {
+            timeLeft--;
+            document.getElementById('game-timer').textContent = timeLeft + "s";
+            
+            if (timeLeft <= 5) {
+                document.getElementById('game-timer').classList.add('text-red-500', 'animate-pulse');
+                playSound('tick');
+            }
+
+            if (timeLeft <= 0) {
+                handleGameOver();
+            }
+        }
+
+        function startGameplayEngine() {
+            // Clean slate configuration
+            gameRunning = true;
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            correctCount = 0;
+            incorrectCount = 0;
+            timeLeft = parseInt(CONFIG.gameDuration) || 60;
+            
+            // Reset HUD items
+            document.getElementById('game-timer').textContent = timeLeft + "s";
+            document.getElementById('game-timer').classList.remove('text-red-500', 'animate-pulse');
+            updateScoreAndComboUI();
+
+            clearAllBubbles();
+
+            // Set current prompt index
+            currentPairIndex = Math.floor(Math.random() * WORD_PAIRS.length);
+            changeCurrentPrompt();
+
+            // Rule 10: Immediately spawn initial bubbles on screen
+            for (let i = 0; i < CONFIG.maxBubblesOnScreen; i++) {
+                // Stagger coordinates vertically so they don't load entirely overlapping
+                setTimeout(() => {
+                    if (gameRunning) {
+                        spawnSingleBubble();
+                        // Adjust Y initial coordinate for staggering effect on start
+                        if (bubbles[bubbles.length - 1]) {
+                            bubbles[bubbles.length - 1].y -= (i * (window.innerHeight / CONFIG.maxBubblesOnScreen));
+                        }
+                    }
+                }, i * 150);
+            }
+
+            // Start countdown clocks
+            timerInterval = setInterval(gameplayTimerTick, 1000);
+
+            // Rule 3: Start the requestAnimationFrame loop immediately after starting game
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+            }
+            animFrameId = requestAnimationFrame(moveBubbles);
+        }
+
+        function stopGameLoop() {
+            gameRunning = false;
+            if (timerInterval) clearInterval(timerInterval);
+            if (spawnInterval) clearInterval(spawnInterval);
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            
+            timerInterval = null;
+            spawnInterval = null;
+            animFrameId = null;
+            
+            clearAllBubbles();
+        }
+
+        function handleGameOver() {
+            stopGameLoop();
+            playSound('gameover');
+            
+            // Save current record to localStorage
+            const nameInput = document.getElementById('student-name').value.trim();
+            const studentName = nameInput || "นักเรียนไร้นาม";
+            
+            saveScoreRecord(studentName, score, maxCombo);
+
+            // Display Score Summary Cards
+            document.getElementById('result-student-name').textContent = "ผู้เล่น: " + studentName;
+            document.getElementById('result-total-score').textContent = score.toLocaleString();
+            document.getElementById('result-max-combo').textContent = maxCombo;
+            document.getElementById('result-correct-count').textContent = correctCount + " ครั้ง";
+            document.getElementById('result-incorrect-count').textContent = incorrectCount + " ครั้ง";
+
+            // Thai Date formatting
+            const dateObj = new Date();
+            const yearTH = dateObj.getFullYear() + 543;
+            const monthsTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+            const dateStr = dateObj.getDate() + " " + monthsTH[dateObj.getMonth()] + " " + yearTH + " (" + dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + " น.)";
+            document.getElementById('result-date').textContent = "วันที่เล่น: " + dateStr;
+
+            // Custom grading & star scale logic based on correct hits
+            let stars = "⭐";
+            let grade = "D";
+            
+            const totalAttempts = correctCount + incorrectCount;
+            const accuracy = totalAttempts > 0 ? (correctCount / totalAttempts) : 0;
+
+            if (correctCount >= 25 && accuracy >= 0.8) {
+                stars = "⭐⭐⭐⭐⭐";
+                grade = "A+";
+            } else if (correctCount >= 18) {
+                stars = "⭐⭐⭐⭐";
+                grade = "A";
+            } else if (correctCount >= 12) {
+                stars = "⭐⭐⭐";
+                grade = "B";
+            } else if (correctCount >= 6) {
+                stars = "⭐⭐";
+                grade = "C";
+            } else {
+                stars = "⭐";
+                grade = "D";
+            }
+
+            document.getElementById('result-stars').textContent = stars;
+            document.getElementById('result-grade').textContent = grade;
+
+            // Route user to the final summary card screen
+            showScreen('screen-result');
+        }
+
+        // ==============================================
+        // SCORES DATABASE MANAGEMENT (Local Storage)
+        // ==============================================
+        function saveScoreRecord(name, score, combo) {
+            try {
+                const historyStr = localStorage.getItem(KEY_SCORES);
+                let history = historyStr ? JSON.parse(historyStr) : [];
+                
+                history.push({
+                    name: name,
+                    score: score,
+                    maxCombo: combo,
+                    timestamp: Date.now()
+                });
+
+                // Sort high to low, keep top 50 records
+                history.sort((a, b) => b.score - a.score);
+                history = history.slice(0, 50);
+
+                localStorage.setItem(KEY_SCORES, JSON.stringify(history));
+            } catch (e) {
+                console.error("Failed to write game scores", e);
+            }
+        }
+
+        function populateLeaderboardScreen() {
+            const listContainer = document.getElementById('leaderboard-list');
+            listContainer.innerHTML = '';
+
+            try {
+                const historyStr = localStorage.getItem(KEY_SCORES);
+                const history = historyStr ? JSON.parse(historyStr) : [];
+
+                if (history.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="text-center py-8 text-gray-400 font-medium">
+                            👻 ยังไม่มีการบันทึกคะแนนเลย<br>มาเป็นคนแรกกันเถอะ!
+                        </div>
+                    `;
+                    return;
+                }
+
+                history.slice(0, 15).forEach((record, index) => {
+                    let trophy = "🏅";
+                    let rowBg = "bg-purple-50/50";
+                    let rankStyle = "text-purple-950";
+
+                    if (index === 0) {
+                        trophy = "🥇";
+                        rowBg = "bg-yellow-100 border-2 border-yellow-300";
+                        rankStyle = "text-yellow-900 font-extrabold";
+                    } else if (index === 1) {
+                        trophy = "🥈";
+                        rowBg = "bg-gray-100 border-2 border-gray-300";
+                        rankStyle = "text-gray-900 font-extrabold";
+                    } else if (index === 2) {
+                        trophy = "🥉";
+                        rowBg = "bg-amber-100 border-2 border-amber-300";
+                        rankStyle = "text-amber-900 font-extrabold";
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = `flex justify-between items-center p-3.5 rounded-2xl ${rowBg} shadow-sm`;
+                    
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${trophy}</span>
+                            <div>
+                                <h4 class="font-bold text-indigo-950">${record.name}</h4>
+                                <span class="text-xs text-gray-400">คอมโบสูงสุด: ${record.maxCombo}🔥</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="${rankStyle} text-lg font-black">${record.score.toLocaleString()} ⭐</span>
+                        </div>
+                    `;
+                    listContainer.appendChild(card);
+                });
+            } catch (e) {
+                listContainer.innerHTML = `<p class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดอันดับ</p>`;
+            }
+        }
+
+        // ==============================================
+        // DYNAMIC TEACHER PANEL CONFIGURATION
+        // ==============================================
+        let tempWordPairs = [];
+
+        function renderSettingsTable() {
+            const tbody = document.getElementById('word-pairs-table-body');
+            tbody.innerHTML = '';
+
+            tempWordPairs.forEach((pair, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-purple-100 hover:bg-purple-50 transition-colors';
+                
+                tr.innerHTML = `
+                    <td class="p-2">
+                        <input type="text" value="${pair.prompt}" onchange="updateTempWordPrompt(${index}, this.value)" 
+                               class="w-full font-bold p-1 border rounded focus:border-purple-400 outline-none text-purple-950">
+                    </td>
+                    <td class="p-2">
+                        <input type="text" value="${pair.correct.join(', ')}" onchange="updateTempWordCorrect(${index}, this.value)" 
+                               class="w-full p-1 border rounded focus:border-purple-400 outline-none text-gray-700">
+                    </td>
+                    <td class="p-2">
+                        <input type="text" value="${pair.incorrect.join(', ')}" onchange="updateTempWordIncorrect(${index}, this.value)" 
+                               class="w-full p-1 border rounded focus:border-purple-400 outline-none text-gray-700">
+                    </td>
+                    <td class="p-2 text-center">
+                        <button onclick="removeWordPairRow(${index})" class="text-red-500 hover:text-red-700 font-bold px-2 py-1">
+                            🗑️ ลบ
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Global functions called via element handlers
+        window.updateTempWordPrompt = function(index, value) {
+            tempWordPairs[index].prompt = value.trim();
+        };
+
+        window.updateTempWordCorrect = function(index, value) {
+            tempWordPairs[index].correct = value.split(',').map(s => s.trim()).filter(s => s !== '');
+        };
+
+        window.updateTempWordIncorrect = function(index, value) {
+            tempWordPairs[index].incorrect = value.split(',').map(s => s.trim()).filter(s => s !== '');
+        };
+
+        window.removeWordPairRow = function(index) {
+            tempWordPairs.splice(index, 1);
+            renderSettingsTable();
+        };
+
+        function openTeacherSettingsPanel() {
+            // Populate form controls
+            document.getElementById('config-game-title').value = CONFIG.gameTitle;
+            document.getElementById('config-school').value = CONFIG.schoolName;
+            document.getElementById('config-teacher').value = CONFIG.teacherName;
+            document.getElementById('config-game-time').value = CONFIG.gameDuration;
+            document.getElementById('config-max-bubbles').value = CONFIG.maxBubblesOnScreen;
+            document.getElementById('config-difficulty').value = CONFIG.difficulty;
+            document.getElementById('config-sound').value = CONFIG.soundEnabled ? "true" : "false";
+
+            // Load temporary clone of data pairs for modifications
+            tempWordPairs = safeClone(WORD_PAIRS);
+            renderSettingsTable();
+
+            showScreen('screen-settings');
+        }
+
+        function saveTeacherSettingsPanel() {
+            const title = document.getElementById('config-game-title').value.trim();
+            const school = document.getElementById('config-school').value.trim();
+            const teacher = document.getElementById('config-teacher').value.trim();
+            const time = parseInt(document.getElementById('config-game-time').value) || 60;
+            const maxBubbles = parseInt(document.getElementById('config-max-bubbles').value) || 7;
+            const diff = document.getElementById('config-difficulty').value;
+            const sound = document.getElementById('config-sound').value === "true";
+
+            // Verify clean configurations
+            if (!title) {
+                alert("กรุณากรอกชื่อเกมการสอนด้วยนะครับคุณครู");
+                return;
+            }
+
+            // Clean empty pairs from the table entries
+            const filteredPairs = tempWordPairs.filter(p => p.prompt !== "" && p.correct.length > 0 && p.incorrect.length > 0);
+            if (filteredPairs.length === 0) {
+                alert("กรุณาป้อนคู่คำคล้องจองหลักในตารางให้เสร็จสมบูรณ์อย่างน้อย 1 คู่ เพื่อเริ่มเกม");
+                return;
+            }
+
+            // Save state updates
+            CONFIG.gameTitle = title;
+            CONFIG.schoolName = school || "โรงเรียนสตรีชัยภูมิ";
+            CONFIG.teacherName = teacher || "ครูกานต์รวี";
+            CONFIG.gameDuration = time;
+            CONFIG.maxBubblesOnScreen = maxBubbles;
+            CONFIG.difficulty = diff;
+            CONFIG.soundEnabled = sound;
+
+            WORD_PAIRS = filteredPairs;
+
+            saveConfigToStorage();
+            showScreen('screen-start');
+        }
+
+        function addNewWordPair() {
+            tempWordPairs.push({
+                prompt: "",
+                correct: [],
+                incorrect: []
+            });
+            renderSettingsTable();
+        }
+
+        // ==============================================
+        // SCREENSHOT & CAPTURING FEATURE
+        // ==============================================
+        function captureSummaryCard() {
+            // HTML2Canvas helper integration with validation check
+            if (typeof html2canvas === 'undefined') {
+                alert("❌ ระบบขัดข้อง: ไม่สามารถติดต่อฐานข้อมูลดาวน์โหลดรูปภาพ CDN ได้ในขณะนี้ ขอแนะนำให้คุณครูจับภาพหน้าจอโดยตรงแทน");
+                return;
+            }
+
+            const card = document.getElementById('summary-card');
+            if (!card) return;
+
+            // Brief loading effect indication using inline custom dialog UI
+            const loadingModal = document.createElement('div');
+            loadingModal.className = "fixed inset-0 bg-black/60 flex items-center justify-center z-[100] text-white text-lg font-bold flex-col gap-3";
+            loadingModal.innerHTML = `
+                <div class="animate-spin text-5xl">🔮</div>
+                <span>ระบบกำลังบันทึกคะแนนเป็นรูปภาพ กรุณารอสักครู่...</span>
+            `;
+            document.body.appendChild(loadingModal);
+
+            // Trigger canvas generation
+            html2canvas(card, {
+                useCORS: true,
+                scale: 2, // Enhance text clarity
+                backgroundColor: "#ffffff",
+                borderRadius: 32
+            }).then(canvas => {
+                try {
+                    // Safe download trigger
+                    const image = canvas.toDataURL("image/png");
+                    const link = document.createElement('a');
+                    link.download = `คะแนน_${document.getElementById('result-student-name').textContent.replace('ผู้เล่น: ', '') || 'นักเรียน'}.png`;
+                    link.href = image;
+                    link.click();
+                } catch (e) {
+                    alert("ไม่สามารถบันทึกภาพอัตโนมัติเนื่องจากข้อจำกัดบราวเซอร์ ขอแนะนำให้ใช้วิธีแคปเจอร์หน้าจอมือถือของคุณโดยตรง");
+                } finally {
+                    loadingModal.remove();
+                }
+            }).catch(err => {
+                loadingModal.remove();
+                alert("เกิดความผิดพลาดในการสร้างไฟล์รูปภาพ กรุณาใช้วิธีจับภาพหน้าจอโทรศัพท์/คอมพิวเตอร์แทนนะครับ");
+                console.error(err);
+            });
+        }
+
+        // ==============================================
+        // DOM EVENT LISTENERS INITIALIZATION
+        // ==============================================
+        window.addEventListener('DOMContentLoaded', () => {
+            // LocalStorage loading
+            loadSavedData();
+
+            // Set default name based on system environment if desired
+            document.getElementById('student-name').value = "";
+
+            // Register Action Events
+            document.getElementById('btn-start-game').addEventListener('click', () => {
+                initAudio(); // Warm-up AudioContext on user action
+                const name = document.getElementById('student-name').value.trim();
+                if (!name) {
+                    alert("😊 สวัสดีครับน้อง ๆ ! กรุณากรอกชื่อของคุณก่อนเริ่มเล่นเกมนี้นะครับ");
+                    return;
+                }
+                startPreCountdown();
+            });
+
+            document.getElementById('btn-goto-leaderboard').addEventListener('click', () => {
+                initAudio();
+                populateLeaderboardScreen();
+                showScreen('screen-leaderboard');
+            });
+
+            document.getElementById('btn-goto-settings').addEventListener('click', () => {
+                initAudio();
+                openTeacherSettingsPanel();
+            });
+
+            document.getElementById('btn-leaderboard-back').addEventListener('click', () => {
+                showScreen('screen-start');
+            });
+
+            document.getElementById('btn-clear-scores').addEventListener('click', () => {
+                if (confirm("คุณครูแน่ใจใช่หรือไม่ที่จะรีเซ็ตอันดับคะแนนทั้งหมด? (ไม่สามารถย้อนกลับได้)")) {
+                    localStorage.removeItem(KEY_SCORES);
+                    populateLeaderboardScreen();
+                }
+            });
+
+            // Result Screen navigation actions
+            document.getElementById('btn-result-restart').addEventListener('click', () => {
+                startPreCountdown();
+            });
+
+            document.getElementById('btn-result-home').addEventListener('click', () => {
+                showScreen('screen-start');
+            });
+
+            document.getElementById('btn-save-image').addEventListener('click', () => {
+                captureSummaryCard();
+            });
+
+            // Settings Controls
+            document.getElementById('btn-add-word-pair').addEventListener('click', addNewWordPair);
+            document.getElementById('btn-settings-cancel').addEventListener('click', () => {
+                showScreen('screen-start');
+            });
+            document.getElementById('btn-settings-save').addEventListener('click', saveTeacherSettingsPanel);
+            
+            document.getElementById('btn-settings-reset').addEventListener('click', () => {
+                if (confirm("แน่ใจหรือไม่ที่จะทำการรีเซ็ตคู่คำศัพท์และการปรับปรุงกลับสู่ค่าเริ่มต้นจากโรงงาน?")) {
+                    WORD_PAIRS = safeClone(DEFAULT_WORD_PAIRS);
+                    CONFIG = {
+                        gameTitle: "ล่าคำสัมผัส 🎤",
+                        schoolName: "โรงเรียนสตรีชัยภูมิ",
+                        teacherName: "ครูกานต์รวี",
+                        gameDuration: 60,
+                        maxBubblesOnScreen: 7,
+                        difficulty: "normal",
+                        soundEnabled: true
+                    };
+                    saveConfigToStorage();
+                    openTeacherSettingsPanel(); // Refresh view
+                }
+            });
+        });
+    </script>
+</body>
+</html>
